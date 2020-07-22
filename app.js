@@ -3,6 +3,8 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const mongoose = require("mongoose");
+const passport = require("passport");
+require("dotenv").config();
 
 const indexRouter = require("./routes/index");
 const usersRouter = require("./routes/users");
@@ -16,12 +18,13 @@ mongoose.connect(process.env.MONGODB_URI, {
   useFindAndModify: false,
 });
 const db = mongoose.connection;
-db.on("error", console.error(console, "connection error:"));
+db.on("error", console.error.bind(console, "connection error:"));
 
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(passport.initialize());
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/", indexRouter);
