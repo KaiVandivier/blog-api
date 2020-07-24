@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { body, validationResult } = require("express-validator");
+const { param, body, validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
@@ -39,34 +39,45 @@ router.post(
         jwt.sign({ id: user._id }, process.env.JWT_SECRET, (err, token) => {
           if (err) return next(err);
           return res.json({ token });
-        })
+        });
       })
       .catch(next);
   }
 );
 
 // GET "Me", the currently authenticated user
-router.get("/me", passport.authenticate("jwt", { session: false }), (req, res, next) => {
-  const { _id, name, email } = req.user;
-  return res.json({ user: { _id, name, email } });
-})
-
-// GET: one user details
-router.get("/:id",
+router.get(
+  "/me",
   passport.authenticate("jwt", { session: false }),
   (req, res, next) => {
-  User.findOne({ _id: req.params.id }, "name email")
-    .then(user => res.json(user))
-    .catch(next);
-});
+    const { _id, name, email } = req.user;
+    return res.json({ user: { _id, name, email } });
+  }
+);
+
+// GET: one user details
+router.get(
+  "/:id",
+  passport.authenticate("jwt", { session: false }),
+  // Confirm ID format
+  param("id", "Invalid ID").isMongoId(),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+    User.findOne({ _id: req.params.id }, "name email")
+      .then((user) => res.json(user))
+      .catch(next);
+  }
+);
 
 // PUT: update one user
-router.put("/:id",
+router.put(
+  "/:id",
   passport.authenticate("jwt", { session: false }),
   // TODO: Validate and sanitize input:
   // Would this be like an "update password" form? idk what to do in this handler
   (req, res, next) => {
-    res.json({ message: "TODO: Update user (PUT)" })
+    res.json({ message: "TODO: Update user (PUT)" });
   }
 );
 

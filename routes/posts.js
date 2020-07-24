@@ -35,7 +35,7 @@ router.post(
     if (!errors.isEmpty())
       return res
         .status(400)
-        .json({ message: "Invalid form data", post, errors });
+        .json({ message: "Invalid form data", post, errors: errors.array() });
 
     post.save((err) => {
       if (err) return next(err);
@@ -75,7 +75,7 @@ router.put(
     if (!errors.isEmpty())
       return res
         .status(400)
-        .json({ message: "Invalid form data", post, errors });
+        .json({ message: "Invalid form data", post, errors: errors.array() });
 
     Post.updateOne({ _id: req.params.id }, post, (err) => {
       if (err) return next(err);
