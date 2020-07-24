@@ -9,7 +9,7 @@ const User = require("../models/user");
 
 /* GET users listing. */
 router.get("/", function (req, res, next) {
-  User.find({}, "name")
+  User.find({}, "name email")
     .then((users) => res.json({ users }))
     .catch(next);
 });
@@ -61,7 +61,14 @@ router.get("/:id",
 });
 
 // PUT: update one user
-router.put("/:id");
+router.put("/:id",
+  passport.authenticate("jwt", { session: false }),
+  // TODO: Validate and sanitize input:
+  // Would this be like an "update password" form? idk what to do in this handler
+  (req, res, next) => {
+    res.json({ message: "TODO: Update user (PUT)" })
+  }
+);
 
 // DELETE: delete one user
 router.delete("/:id");

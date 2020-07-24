@@ -6,9 +6,7 @@ const mongoose = require("mongoose");
 const passport = require("passport");
 require("dotenv").config();
 
-const indexRouter = require("./routes/index");
-const usersRouter = require("./routes/users");
-const authRouter = require("./routes/auth");
+const routes = require("./routes");
 require("./passport");
 
 const app = express();
@@ -29,8 +27,9 @@ app.use(cookieParser());
 app.use(passport.initialize());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/", indexRouter);
-app.use("/users", usersRouter);
-app.use("/auth", authRouter);
+app.use("/users", routes.users);
+app.use("/posts", routes.posts);
+app.use("/comments", routes.comments);
+app.use("/auth", routes.auth);
 
 module.exports = app;
