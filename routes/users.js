@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
+const passport = require("passport");
+const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
 
@@ -29,23 +31,31 @@ router.post(
 
     if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
-    
-    // TODO:
-    // Log in
-    // Sign JWT and send in response
 
     bcrypt
       .hash(req.body.password, 10)
       .then((hash) => User.create({ ...req.body, password: hash }))
-      .then((user) => res.json(user))
+      .then((user) => {
+        jwt.sign({ id: user._id }, process.env.JWT_SECRET, (err, token) => {
+          if (err) return next(err);
+          return res.json({ token });
+        })
+      })
       .catch(next);
   }
 );
 
+// GET "Me", the currently authenticated user
+router.get("/me", passport.authenticate("jwt", { session: false }), (req, res, next) => {
+  const { _id, name, email } = req.user;
+  return res.json({ user: { _id, name, email } });
+})
+
 // GET: one user details
-router.get("/:id", async (req, res, next) => {
-  // use .orFail()? Errors send an html response, which is not ideal for an API
-  User.findOne({ _id: req.params.id })
+router.get("/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res, next) => {
+  User.findOne({ _id: req.params.id }, "name email")
     .then(user => res.json(user))
     .catch(next);
 });
