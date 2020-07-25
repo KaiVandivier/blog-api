@@ -32,9 +32,17 @@ app.use("/posts", routes.posts);
 app.use("/comments", routes.comments);
 app.use("/auth", routes.auth);
 
+// Catch 404 errors
+app.use((req, res, next) => {
+  const err = new Error("Not found");
+  err.status = 404;
+  next(err);
+})
+
 // Custom error handling: respond with errors as JSON, not HTML
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  if (process.env.NODE_ENV === "development")
+    console.error(err.stack);
   res.status(err.status || 500).json({ error: err.message });
 })
 
