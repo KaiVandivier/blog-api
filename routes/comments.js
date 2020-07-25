@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const { param, body, validationResult } = require("express-validator");
+const { param, body } = require("express-validator");
 
 const Comment = require("../models/comment");
 const {
@@ -30,28 +30,20 @@ router.post(
     .withMessage("Comment text is required")
     .isLength({ max: 400 })
     .withMessage("Comment must be 400 characters or fewer"),
-  // `post` should be an invisible input on form
-  body("post", "Invalid Post ID").isMongoId(),
+  body("post")
+    .notEmpty()
+    .withMessage("Post ID is required")
+    .isMongoId()
+    .withMessage("Post ID is invalid"),
+  handleValidationResult,
   // Handle route
   (req, res, next) => {
-    const errors = validationResult(req);
-
-    const comment = new Comment({
+    Comment.create({
       user: req.user._id,
       post: req.body.post,
       text: req.body.text,
-    });
-
-    if (!errors.isEmpty())
-      return res.status(400).json({
-        message: "Oops! Invalid form data",
-        errors: errors.array(),
-        comment,
-      });
-
-    comment
-      .save()
-      .then(() => res.json({ comment }))
+    })
+      .then((comment) => res.json({ comment }))
       .catch(next);
   }
 );
@@ -73,7 +65,6 @@ router.get(
 );
 
 // PUT: update one comment
-// TODO: Check for admin or ownership
 router.put(
   "/:id",
   // Authenticate
@@ -94,49 +85,28 @@ router.put(
   checkEditDeletePermissions,
   // Handle request
   (req, res, next) => {
-    const comment = req.resource;
-    console.log(comment);
-    res.send("Hello!");
-
-    // Comment.findOne({ _id: req.params.id })
-    //   .orFail(new Error("Comment not found"))
-    //   .then((comment) => {
-    //     if (!editDeletePermissions(req.user, comment))
-    //       return res
-    //         .status(403)
-    //         .json({ message: "You don't have permission to do that." });
-    //     Comment.findOneAndUpdate(
-    //       { _id: req.params.id },
-    //       { text: req.body.text },
-    //       { new: true }
-    //     ).then((newComment) => res.json({ comment: newComment }));
-    //   })
-    //   .catch(next);
+    Comment.findOneAndUpdate(
+      { _id: req.params.id },
+      { text: req.body.text },
+      { new: true }
+    )
+      .then((comment) => res.json({ comment }))
+      .catch(next);
   }
 );
 
 // DELETE: delete one comment
-// TODO: Check for admin or ownership
 router.delete(
   "/:id",
   // Authenticate user
   passport.authenticate("jwt", { session: false }),
   // Validate ID
   param("id", "Invalid ID").isMongoId(),
+  handleValidationResult,
+  getResource(Comment),
+  checkEditDeletePermissions,
+  // After verifying item and permissions, handle request
   (req, res, next) => {
-    const errors = validationResult(req);
-
-    if (!errors.isEmpty())
-      return res.status(400).json({ errors: errors.array() });
-
-    Comment.find({ _id: req.params.id }).then((comment) => {
-      // Check if comment exists
-      if (!comment)
-        return res.status(404).json({ message: "Comment not found" });
-      // Check for delete permissions (admin or ownership)
-      const userOwnsComment = comment.user;
-    });
-
     Comment.findOneAndDelete({ _id: req.params.id })
       .then((comment) => res.json({ comment }))
       .catch(next);
