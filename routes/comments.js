@@ -53,15 +53,10 @@ router.get(
   "/:id",
   // Validate ID
   param("id", "Invalid ID").isMongoId(),
-  // Handle validation
   handleValidationResult,
-  // Do rest of route
-  (req, res, next) => {
-    Comment.findOne({ _id: req.params.id })
-      .orFail(new Error("Comment not found"))
-      .then((comment) => res.json({ comment }))
-      .catch(next);
-  }
+  // Get comment and return
+  getResource(Comment),
+  (req, res) => res.json({ comment: req.resource })
 );
 
 // PUT: update one comment
@@ -103,6 +98,7 @@ router.delete(
   // Validate ID
   param("id", "Invalid ID").isMongoId(),
   handleValidationResult,
+  // Get comment and check permissions
   getResource(Comment),
   checkEditDeletePermissions,
   // After verifying item and permissions, handle request

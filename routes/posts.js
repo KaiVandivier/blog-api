@@ -1,9 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const { body, validationResult } = require("express-validator");
+const { param, body } = require("express-validator");
 
 const Post = require("../models/post");
+const {
+  handleValidationResult,
+  getResource,
+  checkEditDeletePermissions,
+} = require("../middlewares");
 
 /* GET posts listing. */
 router.get("/", function (req, res, next) {
@@ -21,35 +26,30 @@ router.post(
   body("title", "Title is required").trim().notEmpty().escape(),
   body("text", "Post content is required").trim().notEmpty().escape(),
   body("published").toBoolean(),
+  handleValidationResult,
   // Handle the rest of the input
   (req, res, next) => {
-    const errors = validationResult(req);
-
-    const post = new Post({
+    Post.create({
       title: req.body.title,
       text: req.body.text,
       user: req.user._id,
       published: req.body.published,
-    });
-
-    if (!errors.isEmpty())
-      return res
-        .status(400)
-        .json({ message: "Invalid form data", post, errors: errors.array() });
-
-    post.save((err) => {
-      if (err) return next(err);
-      return res.json({ post });
-    });
+    })
+      .then((post) => res.json(post))
+      .catch(next);
   }
 );
 
 // GET: one post details
-router.get("/:id", (req, res, next) => {
-  Post.findOne({ _id: req.params.id })
-    .then((post) => res.json({ post }))
-    .catch(next);
-});
+router.get(
+  "/:id",
+  // Validate ID
+  param("id", "Invalid post ID").isMongoId(),
+  handleValidationResult,
+  // Get post and return
+  getResource(Post),
+  (req, res) => res.json({ post: req.resource })
+);
 
 // PUT: update one post
 router.put(
@@ -60,27 +60,24 @@ router.put(
   body("title", "Title is required").trim().notEmpty().escape(),
   body("text", "Post content is required").trim().notEmpty().escape(),
   body("published").toBoolean(),
+  handleValidationResult,
+  // Find resource, check permissions
+  getResource(Post),
+  checkEditDeletePermissions,
   // Handle rest of request
   (req, res, next) => {
-    const errors = validationResult(req);
-
-    const post = new Post({
-      _id: req.params.id,
-      title: req.body.title,
-      text: req.body.text,
-      user: req.user._id,
-      published: req.body.published,
-    });
-
-    if (!errors.isEmpty())
-      return res
-        .status(400)
-        .json({ message: "Invalid form data", post, errors: errors.array() });
-
-    Post.updateOne({ _id: req.params.id }, post, (err) => {
-      if (err) return next(err);
-      return res.json({ post });
-    });
+    Post.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        title: req.body.title,
+        text: req.body.text,
+        user: req.user._id,
+        published: req.body.published,
+      },
+      { new: true }
+    )
+      .then((post) => res.json({ post }))
+      .catch(next);
   }
 );
 
@@ -89,7 +86,13 @@ router.delete(
   "/:id",
   // Authenticate user
   passport.authenticate("jwt", { session: false }),
-  // Handle request
+  // Validate ID
+  param("id", "Invalid ID").isMongoId(),
+  handleValidationResult,
+  // Get post and check permissions
+  getResource(Post),
+  checkEditDeletePermissions,
+  // After verifying item and permissions, handle request
   (req, res, next) => {
     Post.findOneAndDelete({ _id: req.params.id })
       .then((post) => res.json({ post }))

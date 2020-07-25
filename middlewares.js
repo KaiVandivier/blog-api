@@ -1,4 +1,5 @@
 const { validationResult } = require("express-validator");
+const User = require("./models/user");
 
 function handleValidationResult(req, res, next) {
   const errors = validationResult(req);
@@ -30,14 +31,18 @@ function getResource(model) {
 }
 
 function checkEditDeletePermissions(req, res, next) {
+  // Note: this won't work for items that don't have a `user` prop
   if (!req.user) throw new Error("User not found");
   if (!req.resource) throw new Error("Resource not found");
 
   // Checks if req.user has admin privs or owns resource
   const admin = req.user.admin;
-  const ownsResource = req.resource.user.toString() == req.user._id.toString();
+  const ownsResource =
+    req.resource instanceof User
+      ? req.user._id.toString() == req.resource._id.toString()
+      : req.user._id.toString() == req.resource.user.toString();
 
-  // If neither conditions met, return "403 unauthorized"
+  // If neither condition is met, return "403 unauthorized"
   if (!admin && !ownsResource)
     return res
       .status(403)
