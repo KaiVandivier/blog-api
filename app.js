@@ -35,7 +35,7 @@ app.use("/auth", routes.auth);
 // Custom error handling: respond with errors as JSON, not HTML
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: err.message });
+  res.status(err.status || 500).json({ error: err.message });
 })
 
 module.exports = app;
